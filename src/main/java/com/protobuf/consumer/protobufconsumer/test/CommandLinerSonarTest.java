@@ -35,6 +35,8 @@ public class CommandLinerSonarTest {
 
 		for(int i=1;i<=20;i++) {
 			callByUnirest(i);
+			//callByRestTemplate(i);
+			//callByWebClient(i);
 		}		
 	}
 
@@ -53,5 +55,65 @@ public class CommandLinerSonarTest {
 
 		long time2 = (new Date()).getTime() - start2;
 		System.out.println(number+" :: Consumer JSON for :: "+empDto.getEmp_name()+" :: Response Time Taken is :: " + time2 + "ms");
+	}
+	
+	private void callByWebClient(int number){
+		long start = (new Date()).getTime();
+		ExchangeStrategies exchangeStrategies = ExchangeStrategies.builder()
+				.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(64 * 1024 * 1024)).build();
+		WebClient webClient1 = WebClient.builder()
+				.baseUrl(EMP_URL)
+				.defaultCookie("cookieKey", "cookieValue")
+				.defaultUriVariables(Collections.singletonMap("url", EMP_URL))
+				.exchangeStrategies(exchangeStrategies)
+				.build();
+		Mono<Emp> response1 = webClient1.get()
+				//.accept(MediaType.parse("application/x-protobuf"))
+				.retrieve()
+				.bodyToMono(Emp.class);
+
+		Emp empResponse = response1.block();
+		long time = (new Date()).getTime() - start;
+		System.out.println("\n"+number+" :: Consumer Protobuf for :: "+empResponse.getEmpName()+" :: Response Time Taken is :: " + time + "ms");
+
+		long start2 = (new Date()).getTime();
+		WebClient webClient = WebClient.builder()
+				.baseUrl(EMP_URL1)
+				.defaultCookie("cookieKey", "cookieValue")
+				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+				.defaultUriVariables(Collections.singletonMap("url", EMP_URL1))
+				.exchangeStrategies(exchangeStrategies)
+				.build();
+		Mono<EmpDto> response = webClient.get()
+				.accept(MediaType.APPLICATION_JSON)
+				.retrieve()
+				.bodyToMono(EmpDto.class);
+
+		EmpDto empDto = response.block();
+		long time2 = (new Date()).getTime() - start2;
+		System.out.println(number+" :: Consumer JSON for :: "+empDto.getEmp_name()+" :: Response Time Taken is :: " + time2 + "ms");
+	}
+	
+	
+	private void callByRestTemplate(int number){
+	
+		RestTemplate restTemplate=new RestTemplate(Arrays.asList(new ProtobufHttpMessageConverter()));
+
+		long start = (new Date()).getTime();
+		ResponseEntity<Emp> empResponse = restTemplate.getForEntity(EMP_URL, Emp.class);
+		long time = (new Date()).getTime() - start;
+		System.out.println("\n"+number+" :: Consumer Protobuf  for :: "+empResponse.getBody().getEmpName()+" :: Response Time Taken is :: " + time + "ms");
+		
+		RestTemplate restTemplateJson=new RestTemplate();
+		List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
+		MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+		converter.setSupportedMediaTypes(Collections.singletonList(MediaType.ALL));
+		messageConverters.add(converter);
+		restTemplateJson.setMessageConverters(messageConverters);
+		
+		long start2 = (new Date()).getTime();
+		ResponseEntity<EmpDto> empResponseJson = restTemplateJson.getForEntity(EMP_URL1, EmpDto.class);
+		long time2 = (new Date()).getTime() - start2;
+		System.out.println(number+" :: Consumer JSON for :: "+empResponseJson.getBody().getEmp_name()+" :: Response Time Taken is :: " + time2 + "ms");
 	}
 }
